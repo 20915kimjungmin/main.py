@@ -1,4 +1,4 @@
-# main.py# 어제의 박스오피스 — KOBIS 일별 박스오피스 API(선생님 결과)
+# main.py# 어제의 박스오피스 — KOBIS 일별 박스오피스 API
 import datetime
 
 import pandas as pd
