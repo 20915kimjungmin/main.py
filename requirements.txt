@@ -1,0 +1,62 @@
+import datetime
+import pandas as pd
+import requests
+import streamlit as st
+
+# KST 기준 어제 날짜 계산 (오늘 날짜는 집계 전이므로 최대 선택 가능일은 어제)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+어제 = datetime.datetime.now(KST).date() - datetime.timedelta(days=1)
+
+# 달력에서 날짜를 선택 (최대 어제까지 선택 가능)
+고른날 = st.date_input("날짜를 고르세요", value=어제, max_value=어제)
+
+URL = "https://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json"
+
+
+@st.cache_data(ttl=3600)
+def fetch(day_text):
+    res = requests.get(
+        URL,
+        params={"key": st.secrets["KOBIS_KEY"], "targetDt": day_text},
+        timeout=20,
+    )
+    answer = res.json().get("boxOfficeResult")
+    return answer["dailyBoxOfficeList"] if answer else []
+
+
+# 고른 날짜를 YYYYMMDD 포맷으로 변환하여 호출
+movies = fetch(고른날.strftime("%Y%m%d"))
+
+# 응답받은 목록이 비어 있으면 안내 메시지 출력
+if not movies:
+    st.info("그날은 아직 집계 전입니다.")
+    st.stop()
+
+
+# 순위 변동 기호 변환 함수 (양수: 빨간 위 화살표, 음수: 파란 아래 화살표)
+def format_rank_inten(inten_str):
+    inten = int(inten_str)
+    if inten > 0:
+        return f"🔴🔺 {inten}"
+    elif inten < 0:
+        return f"🔵🔻 {abs(inten)}"
+    else:
+        return "—"
+
+
+# 데이터프레임 가공
+표 = pd.DataFrame([
+    {
+        "순위": int(m["rank"]),
+        "영화명": (
+            ("🏆 " if int(m["audiAcc"]) >= 1_000_000 else "") + m["movieNm"]
+        ),
+        "순위 변화": format_rank_inten(m["rankInten"]),
+        "관객수": int(m["audiCnt"]),
+        "누적관객": int(m["audiAcc"]),
+    }
+    for m in movies
+])
+
+st.dataframe(표, hide_index=True)
+st.caption("🔴🔺 오른 영화 · 🔵🔻 내린 영화 · 🏆 누적 100만 명을 넘은 영화")
