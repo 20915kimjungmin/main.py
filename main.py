@@ -72,4 +72,5 @@ st.dataframe(table, hide_index=True, width="stretch")
 # 관객수 상위 5편은 막대그래프로
 st.subheader("📊 관객수 상위 5편")
 top5 = df.sort_values("audiCnt", ascending=False).head(5)
-fig = px.bar(top5, x="movieNm", y="
+fig = px.bar(top5, x="movieNm", y="audiCnt")
+st.plotly_chart(fig)
